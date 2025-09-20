@@ -5,7 +5,6 @@ import type {
   NodeSavedState,
   NodeSavedStateStore,
 } from "@atproto/oauth-client-node"
-import { URLSearchParams } from "node:url";
 
 const stateStore = new Map()
 const sessionStore = new Map()
@@ -51,19 +50,21 @@ export class SessionStore implements NodeSavedSessionStore {
   }
 }
 
-function buildClientID() {
-  const isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
-  if (isLocal) {
-    return `http://localhost?${new URLSearchParams({ scope: "atproto repo:app.bsky.feed.post?action=create", redirect_uri: Object.assign(new URL(window.location.origin), { hostname: '127.0.0.1' }).href })}`
-  }
-  return `https://${window.location.host}/oauth-client-metadata.json`
-}
+const IS_DEV = process.env.NODE_ENV === "development";
+const PUBLIC_URL = "https://example.com";
+const LOCAL_URL = "http://[::1]:5173";
+const APP_URL = IS_DEV ? LOCAL_URL : PUBLIC_URL;
 
 export const client = new NodeOAuthClient({
   clientMetadata: {
+    client_id: !IS_DEV
+      ? `${PUBLIC_URL}/client-metadata.json`
+      : `http://localhost?redirect_uri=${encodeURIComponent(
+        `${APP_URL}/oauth/callback`,
+      )}&scope=${encodeURIComponent("atproto repo:app.bsky.feed.post?action=create")}`,
+    client_uri: APP_URL,
     client_name: "atproto react router oauth example",
-    client_uri: buildClientID(),
-    redirect_uris: [`${window.location.host}/oauth/callback`],
+    redirect_uris: [`${APP_URL}/oauth/callback`],
     scope: "atproto repo:app.bsky.feed.post?action=create",
     grant_types: ["authorization_code", "refresh_token"],
     response_types: ["code"],
